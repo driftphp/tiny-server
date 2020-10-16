@@ -1,0 +1,7 @@
+{
+    "require": {
+        "symfony/console": "^5",
+        "react/event-loop": "^1",
+        "react/http": "^1"
+    }
+}

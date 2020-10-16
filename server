@@ -1,0 +1,83 @@
+#!/usr/bin/env php
+<?php
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+use React\EventLoop\Factory;
+use React\Http\Server;
+use RingCentral\Psr7\Response;
+use Psr\Http\Message\ServerRequestInterface;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputDefinition;
+
+require __DIR__ . "/vendor/autoload.php";
+
+$inputDefinition = (new InputDefinition([
+    new InputArgument('port', InputArgument::REQUIRED)
+]));
+$input = new ArgvInput($argv, $inputDefinition);
+$port = $input->getArgument('port');
+$loop = Factory::create();
+
+echo '#' . PHP_EOL;
+echo '# Tiny Server, by DriftPHP' . PHP_EOL;
+echo '#' . PHP_EOL;
+echo '# EventLoop > running ('.get_class($loop).')' . PHP_EOL;
+echo '# Listening > 0.0.0.0:'.$port . PHP_EOL;
+echo '# Each dot is a request' . PHP_EOL;
+echo "#   \033[32m*\033[0m ~200" . PHP_EOL;
+echo "#   \033[34m*\033[0m ~300" . PHP_EOL;
+echo "#   \033[31m*\033[0m ~400" . PHP_EOL;
+echo "#   \033[95m*\033[0m =500" . PHP_EOL;
+echo '#' . PHP_EOL;
+
+$server = new Server($loop, function (ServerRequestInterface $request) use ($port) {
+
+    $requestCode = \intval(trim($request->getUri()->getPath(), '/'));
+    $responseCode = 200;
+    $responseMessage = 'DriftPHP rocks!';
+    $responseHeaders = [];
+    if (
+        $requestCode >= 200 &&
+        $requestCode <= 500
+    ) {
+        $responseCode = $requestCode;
+    }
+
+    if ($requestCode === 301 || $requestCode === 308) {
+        $responseHeaders['Location'] = "0.0.0.0:$port/418";
+        $responseMessage = 'DriftPHP is a Teapot!';
+    }
+
+    $color = 32;
+    if (300 <= $responseCode && $responseCode < 400) { $color = 34; }
+    elseif (418 === $responseCode) { $color = 96; }
+    elseif (400 <= $responseCode && $responseCode < 500) { $color = 31; }
+    elseif (500 === $responseCode) { $color = 95; }
+
+    echo "\033[{$color}m*\033[0m";
+    return new Response($responseCode, $responseHeaders, $responseMessage);
+});
+
+$signalHandler = function () use (&$signalHandler, $server, $loop) {
+
+    echo PHP_EOL;
+    echo '#' . PHP_EOL;
+    echo '# EventLoop > stopped' . PHP_EOL;
+    echo '# Bye Bye!' . PHP_EOL;
+    echo '#' . PHP_EOL;
+
+    $loop->removeSignal(SIGINT, $signalHandler);
+    $loop->removeSignal(SIGTERM, $signalHandler);
+    $loop->stop();
+};
+
+$loop->addSignal(SIGINT, $signalHandler);
+$loop->addSignal(SIGTERM, $signalHandler);
+
+$socket = new React\Socket\Server("0.0.0.0:$port", $loop);
+$server->listen($socket);
+$loop->run();
