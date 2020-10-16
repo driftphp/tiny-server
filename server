@@ -48,7 +48,8 @@ $server = new Server($loop, function (ServerRequestInterface $request) use ($por
     }
 
     if ($requestCode === 301 || $requestCode === 308) {
-        $responseHeaders['Location'] = "0.0.0.0:$port/418";
+        $host = $request->getServerParams()['SERVER_ADDR'] ?? '0.0.0.0';
+        $responseHeaders['Location'] = "$host:$port/418";
         $responseMessage = 'DriftPHP is a Teapot!';
     }
 
