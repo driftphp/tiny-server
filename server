@@ -20,6 +20,28 @@ const HTTP_INTERNAL_SERVER_ERROR = 500;
 const HTTP_MOVED_PERMANENTLY = 301;
 const HTTP_PERMANENT_REDIRECT = 308;
 
+/**
+ * @param int $responseCode
+ *
+ * @return int
+ */
+function getColorCodeByResponseCode(int $responseCode): int
+{
+    if (300 <= $responseCode && $responseCode < 400) {
+        return 34;
+    } elseif (418 === $responseCode) {
+        return 96;
+    } elseif (400 <= $responseCode && $responseCode < HTTP_MOVED_PERMANENTLY) {
+        return 31;
+    } elseif (HTTP_MOVED_PERMANENTLY === $responseCode) {
+        return 95;
+    }
+    return 32;
+}
+
+/**
+ * Server initialization
+ */
 $inputDefinition = (new InputDefinition([
     new InputArgument('port', InputArgument::REQUIRED)
 ]));
@@ -59,7 +81,7 @@ $server = new Server($loop, function (ServerRequestInterface $request) use ($por
         $responseMessage = 'DriftPHP is a Teapot!';
     }
 
-    $color = getColorCode($responseCode);
+    $color = getColorCodeByResponseCode($responseCode);
 
     echo "\033[{$color}m*\033[0m";
     return new Response($responseCode, $responseHeaders, $responseMessage);
@@ -84,20 +106,3 @@ $loop->addSignal(SIGTERM, $signalHandler);
 $socket = new React\Socket\Server("0.0.0.0:$port", $loop);
 $server->listen($socket);
 $loop->run();
-
-
-function getColorCode(int $responseCode): int
-{
-    if (300 <= $responseCode && $responseCode < 400) {
-        return 34;
-    } elseif (418 === $responseCode) {
-        return 96;
-    } elseif (400 <= $responseCode && $responseCode < HTTP_MOVED_PERMANENTLY) {
-        return 31;
-    } elseif (HTTP_MOVED_PERMANENTLY === $responseCode) {
-        return 95;
-    }
-    return 32;
-}
-
-
